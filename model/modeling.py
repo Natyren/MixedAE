@@ -118,7 +118,7 @@ class HomoAttention(nn.Module):
     def __init__(
         self,
         dim,
-        topk=5,
+        topk=0.25,
         num_heads=8,
         qkv_bias=False,
         qk_norm=False,
@@ -132,12 +132,12 @@ class HomoAttention(nn.Module):
         self.head_dim = dim // num_heads
         self.scale = self.head_dim**-0.5
 
-        self.topk = topk
+        self.topk = int(topk * self.head_dim)
         self.qk = nn.Linear(dim, dim * 2, bias=qkv_bias)
         self.q_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
         self.k_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
         self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim, dim)
+        self.proj = nn.Linear(self.num_heads * self.topk, dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
     def forward(self, x):
@@ -152,11 +152,11 @@ class HomoAttention(nn.Module):
 
         q = q * self.scale
         attn = q @ k.transpose(-2, -1)
+        attn = torch.topk(attn, k=self.topk, dim=-1)[0]
         attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
-        # implementation of topk operation
+        x = self.attn_drop(attn)
 
-        x = x.transpose(1, 2).reshape(B, N, C)
+        x = x.transpose(1, 2).reshape(B, N, self.num_heads * self.topk)
         x = self.proj(x)
         x = self.proj_drop(x)
         return x

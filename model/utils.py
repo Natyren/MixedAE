@@ -8,3 +8,7 @@ class HomoContrastive(nn.Module):
 
 class Mixing:
     pass
+
+
+def attention_mass(x):
+    pass
