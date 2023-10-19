@@ -212,7 +212,7 @@ class Block(nn.Module):
         dim,
         num_heads,
         homo=True,
-        topk=5,
+        topk=0.25,
         mlp_ratio=4.0,
         qkv_bias=False,
         qk_norm=False,
