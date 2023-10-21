@@ -8,13 +8,13 @@ import torch.nn as nn
 class PatchEmbed(nn.Module):
     def __init__(
         self,
-        img_size,
-        patch_size,
-        proj,
-        in_channels,
-        embed_dim,
-        norm_layer,
-        bias,
+        img_size=224,
+        patch_size=16,
+        proj="conv",
+        in_channels=3,
+        embed_dim=768,
+        norm_layer=nn.LayerNorm,
+        bias=True,
     ):
         super().__init__()
         assert isinstance(img_size, collections.abc.Iterable) or isinstance(
