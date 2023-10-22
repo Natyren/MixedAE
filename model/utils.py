@@ -7,6 +7,18 @@ class HomoContrastive(nn.Module):
     pass
 
 
+def mixing(a):
+    idx = np.concatenate(
+        [
+            np.expand_dims(np.random.permutation(a.shape[-2]), 0)
+            for _ in range(a.shape[-1])
+        ],
+        axis=0,
+    )
+    mixed = np.take_along_axis(a, idx, axis=-1)
+    return mixed
+
+
 # --------------------------------------------------------
 # 2D sine-cosine position embedding
 # References:
