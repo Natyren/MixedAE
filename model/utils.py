@@ -8,14 +8,11 @@ class HomoContrastive(nn.Module):
 
 
 def mixing(a):
-    idx = np.concatenate(
-        [
-            np.expand_dims(np.random.permutation(a.shape[-2]), 0)
-            for _ in range(a.shape[-1])
-        ],
-        axis=0,
+    idx = torch.cat(
+        [torch.randperm(a.size(-2)).unsqueeze(-1) for _ in range(a.size(-1))],
+        axis=1,
     )
-    mixed = np.take_along_axis(a, idx, axis=-1)
+    mixed = torch.gather(a, dim=a.size(-2), index=idx)
     return mixed
 
 
