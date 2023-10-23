@@ -23,10 +23,10 @@ class PatchEmbed(nn.Module):
         self.img_size = (
             (img_size, img_size)
             if not isinstance(img_size, collections.abc.Iterable)
-            else patch_size
+            else img_size
         )
 
-        assert isinstance(patch_size, collections.abs.Iterable) or isinstance(
+        assert isinstance(patch_size, collections.abc.Iterable) or isinstance(
             patch_size, int
         ), "Please provide patch_size in iterable or int format"
         self.patch_size = (
@@ -49,8 +49,8 @@ class PatchEmbed(nn.Module):
             )
 
         if norm_layer:
-            if isinstance(norm_layer, nn.Module):
-                self.norm_layer = norm_layer
+            if issubclass(norm_layer, nn.Module):
+                self.norm_layer = norm_layer(embed_dim)
             else:
                 raise ValueError(
                     "Please provide norm_layer in torch.nn.Module format"
@@ -64,6 +64,7 @@ class PatchEmbed(nn.Module):
             assert H == self.img_size[0]
             assert W == self.img_size[1]
         x = self.proj(x)
+        x = x.flatten(2).transpose(1, 2)
         x = self.norm_layer(x)
         return x
 
