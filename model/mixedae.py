@@ -5,6 +5,7 @@ import torch.nn as nn
 
 # from .utils import get_2d_sincos_pos_embed
 from .modeling import PatchEmbed, Block
+from .utils import mixing
 
 
 class MixedAutoencoderViT(nn.Module):
@@ -44,3 +45,25 @@ class MixedAutoencoderViT(nn.Module):
             ]
         )
         self.norm = norm_layer(embed_dim)
+
+    def forward_encoder(self, x):
+        # embed patches
+        x = self.patch_embed(x)
+
+        # add pos embed w/o cls token
+        x = x + self.pos_embed[:, 1:, :]
+
+        # masking: length -> length * mask_ratio
+        x, ids = mixing(x)
+
+        # append cls token
+        cls_token = self.cls_token + self.pos_embed[:, :1, :]
+        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)
+
+        # apply Transformer blocks
+        for blk in self.blocks:
+            x = blk(x)
+        x = self.norm(x)
+
+        return x

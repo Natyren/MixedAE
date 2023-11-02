@@ -10,9 +10,9 @@ class PatchEmbed(nn.Module):
         self,
         img_size=224,
         patch_size=16,
-        proj="conv",
         in_channels=3,
         embed_dim=768,
+        proj="conv",
         norm_layer=nn.LayerNorm,
         bias=True,
     ):
@@ -34,6 +34,10 @@ class PatchEmbed(nn.Module):
             if not isinstance(patch_size, collections.abc.Iterable)
             else patch_size
         )
+        self.grid_size = tuple(
+            [s // p for s, p in zip(self.img_size, self.patch_size)]
+        )
+        self.num_patches = self.grid_size[0] * self.grid_size[1]
 
         if proj.lower() == "linear":
             raise NotImplementedError(
@@ -121,7 +125,7 @@ class HomoAttention(nn.Module):
         dim,
         topk=0.25,
         num_heads=8,
-        qkv_bias=False,
+        qk_bias=False,
         qk_norm=False,
         attn_drop=0.0,
         proj_drop=0.0,
@@ -134,7 +138,7 @@ class HomoAttention(nn.Module):
         self.scale = self.head_dim**-0.5
 
         self.topk = int(topk * self.head_dim)
-        self.qk = nn.Linear(dim, dim * 2, bias=qkv_bias)
+        self.qk = nn.Linear(dim, dim * 2, bias=qk_bias)
         self.q_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
         self.k_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
         self.attn_drop = nn.Dropout(attn_drop)

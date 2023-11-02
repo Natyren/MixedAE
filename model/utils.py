@@ -7,13 +7,18 @@ class HomoContrastive(nn.Module):
     pass
 
 
-def mixing(a):
+def mixing(
+    a,
+):  # a.shape = [B, (img_size/patch_size)**2, hidden_dim] where B = 2 or 4
     idx = torch.cat(
-        [torch.randperm(a.size(-2)).unsqueeze(-1) for _ in range(a.size(-1))],
+        [
+            torch.randperm(a.size(-3)).unsqueeze(-1).repeat(1, a.size(-1))
+            for _ in range(a.size(-2))
+        ],
         axis=1,
-    )
-    mixed = torch.gather(a, dim=a.size(-2), index=idx)
-    return mixed
+    ).reshape(a.shape)
+    mixed = torch.gather(a, dim=0, index=idx)
+    return mixed, idx
 
 
 # --------------------------------------------------------
