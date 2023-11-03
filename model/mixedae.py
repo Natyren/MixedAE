@@ -46,6 +46,12 @@ class MixedAutoencoderViT(nn.Module):
         )
         self.norm = norm_layer(embed_dim)
 
+    def shuffling(self, x, n_splits=4):
+        mixed = [mixing(tnsr) for tnsr in torch.split(x, n_splits)]
+        x_tensors = torch.cat([tnsr[0] for tnsr in mixed])
+        idxes = torch.cat([tnsr[1] for tnsr in mixed])
+        return x_tensors, idxes
+
     def forward_encoder(self, x):
         # embed patches
         x = self.patch_embed(x)
@@ -54,7 +60,7 @@ class MixedAutoencoderViT(nn.Module):
         x = x + self.pos_embed[:, 1:, :]
 
         # masking: length -> length * mask_ratio
-        x, ids = mixing(x)
+        x, ids = self.shuffling(x)
 
         # append cls token
         cls_token = self.cls_token + self.pos_embed[:, :1, :]
@@ -66,4 +72,4 @@ class MixedAutoencoderViT(nn.Module):
             x = blk(x)
         x = self.norm(x)
 
-        return x
+        return x, ids
