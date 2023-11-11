@@ -53,21 +53,16 @@ class MixedAutoencoderViT(nn.Module):
         return x_tensors, idxes
 
     def forward_encoder(self, x):
-        # embed patches
         x = self.patch_embed(x)
 
-        # add pos embed w/o cls token
         x = x + self.pos_embed[:, 1:, :]
 
-        # masking: length -> length * mask_ratio
         x, ids = self.shuffling(x)
 
-        # append cls token
         cls_token = self.cls_token + self.pos_embed[:, :1, :]
         cls_tokens = cls_token.expand(x.shape[0], -1, -1)
         x = torch.cat((cls_tokens, x), dim=1)
 
-        # apply Transformer blocks
         for blk in self.blocks:
             x = blk(x)
         x = self.norm(x)
