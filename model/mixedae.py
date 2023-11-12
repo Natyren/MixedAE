@@ -8,7 +8,7 @@ from .modeling import PatchEmbed, Block
 from .utils import mixing
 
 
-class MixedAutoencoderViT(nn.Module):
+class MixedMaskedAutoencoderViT(nn.Module):
     def __init__(
         self,
         img_size=224,
@@ -33,6 +33,10 @@ class MixedAutoencoderViT(nn.Module):
         self.pos_embed = nn.Parameter(
             torch.zeros(1, num_patches + 1, embed_dim), requires_grad=False
         )
+        self.segment_embed = nn.Embedding(
+            4, embed_dim
+        )  # TODO change 4 to custom mixing param
+
         self.blocks = nn.ModuleList(
             [
                 Block(
@@ -56,6 +60,11 @@ class MixedAutoencoderViT(nn.Module):
         x = self.patch_embed(x)
 
         x = x + self.pos_embed[:, 1:, :]
+        x = x + self.segment_embed(
+            torch.tensor(
+                [i % 4 for i in range(x.shape[0])]
+            )  # TODO change 4 to custom mixing param
+        ).unsqueeze(1)
 
         x, ids = self.shuffling(x)
 
