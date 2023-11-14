@@ -51,7 +51,9 @@ class MixedMaskedAutoencoderViT(nn.Module):
         self.norm = norm_layer(embed_dim)
 
     def shuffling(self, x, n_splits=4):
-        mixed = [mixing(tnsr) for tnsr in torch.split(x, n_splits)]
+        mixed = [
+            mixing(tnsr) for tnsr in torch.split(x, n_splits)
+        ]  # TODO make decrease shape to [num_patches]
         x_tensors = torch.cat([tnsr[0] for tnsr in mixed])
         idxes = torch.cat([tnsr[1] for tnsr in mixed])
         return x_tensors, idxes
