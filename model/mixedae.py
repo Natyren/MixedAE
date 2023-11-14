@@ -50,6 +50,33 @@ class MixedMaskedAutoencoderViT(nn.Module):
         )
         self.norm = norm_layer(embed_dim)
 
+        self.mask_token = nn.Parameter(torch.zeros(1, decoder_embed_dim))
+
+        self.decoder_embed = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
+
+        self.decoder_pos_embed = nn.Parameter(
+            torch.zeros(1, num_patches + 1, decoder_embed_dim),
+            requires_grad=False,
+        )
+
+        self.decoder_blocks = nn.ModuleList(
+            [
+                Block(
+                    decoder_embed_dim,
+                    decoder_num_heads,
+                    mlp_ratio,
+                    qkv_bias=True,
+                    norm_layer=norm_layer,
+                )
+                for _ in range(decoder_depth)
+            ]
+        )
+
+        self.decoder_norm = norm_layer(decoder_embed_dim)
+        self.decoder_pred = nn.Linear(
+            decoder_embed_dim, patch_size**2 * in_chans, bias=True
+        )
+
     def shuffling(self, x, n_splits=4):
         mixed = [
             mixing(tnsr) for tnsr in torch.split(x, n_splits)
@@ -79,3 +106,30 @@ class MixedMaskedAutoencoderViT(nn.Module):
         x = self.norm(x)
 
         return x, ids
+
+    def forward_decoder(self, x, ids):
+        x = self.decoder_embed(x)
+
+        x_ = x[:, 1:, :]
+        for i in range(x.shape[0]):
+            x_[i] = torch.where(
+                ids[i][:, : x.shape[-1]] != i % 4, self.mask_token, x_[i]
+            )  # TODO make with custom group size
+
+        x = torch.cat([x[:, :1, :], x_], dim=1)
+
+        x = x + self.decoder_pos_embed
+
+        for blk in self.decoder_blocks:
+            x = blk(x)
+        x = self.decoder_norm(x)
+
+        x = self.decoder_pred(x)
+        x = x[:, 1:, :]
+
+        return x
+
+    def forward(self, x):
+        latent, ids = self.forward_encoder(x)
+        pred = self.forward_decoder(latent, ids)
+        return pred
