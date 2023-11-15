@@ -77,6 +77,8 @@ class MixedMaskedAutoencoderViT(nn.Module):
             decoder_embed_dim, patch_size**2 * in_chans, bias=True
         )
 
+        self.norm_pix_loss = norm_pix_loss
+
     def shuffling(self, x, n_splits=4):
         mixed = [
             mixing(tnsr) for tnsr in torch.split(x, n_splits)
@@ -84,6 +86,20 @@ class MixedMaskedAutoencoderViT(nn.Module):
         x_tensors = torch.cat([tnsr[0] for tnsr in mixed])
         idxes = torch.cat([tnsr[1] for tnsr in mixed])
         return x_tensors, idxes
+
+    def patchify(self, imgs):
+        """
+        imgs: (N, 3, H, W)
+        x: (N, L, patch_size**2 *3)
+        """
+        p = self.patch_embed.patch_size[0]
+        assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % p == 0
+
+        h = w = imgs.shape[2] // p
+        x = imgs.reshape(shape=(imgs.shape[0], 3, h, p, w, p))
+        x = torch.einsum("nchpwq->nhwpqc", x)
+        x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 3))
+        return x
 
     def forward_encoder(self, x):
         x = self.patch_embed(x)
@@ -129,7 +145,22 @@ class MixedMaskedAutoencoderViT(nn.Module):
 
         return x
 
+    def forward_loss(self, imgs, pred):
+
+        target = self.patchify(imgs)
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.0e-6) ** 0.5
+
+        loss = (pred - target) ** 2
+        loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
+
+        loss = loss.sum() * 0.25  # add custom scaling parameter
+        return loss
+
     def forward(self, x):
         latent, ids = self.forward_encoder(x)
         pred = self.forward_decoder(latent, ids)
-        return pred
+        loss = self.forward_loss(x, pred)
+        return loss, pred
