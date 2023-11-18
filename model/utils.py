@@ -5,7 +5,7 @@ import numpy as np
 
 class HomoContrastive(nn.Module):
     def __init__(
-        self, temperature=0.05, contrast_mode="all", base_temperature=0.07
+        self, temperature=0.07, contrast_mode="all", base_temperature=0.07
     ):
         super().__init__()
         self.temperature = temperature
@@ -18,11 +18,11 @@ class HomoContrastive(nn.Module):
         total_loss = 0
         for _labels, item in zip(labels, features):
             labels = _labels[:, 0].view(-1, 1)
-            batch_size = item.shape[0]
+
             mask = torch.eq(labels, labels.T).float().to(device)
 
-            contrast_count = item.shape[1]
-            contrast_feature = torch.cat(torch.unbind(item, dim=1), dim=0)
+            contrast_count = item.shape[0]
+            contrast_feature = item
             if self.contrast_mode == "one":
                 anchor_feature = item[:, 0]
                 anchor_count = 1
@@ -31,27 +31,24 @@ class HomoContrastive(nn.Module):
                 anchor_count = contrast_count
             else:
                 raise ValueError("Unknown mode: {}".format(self.contrast_mode))
-
             # compute logits
             anchor_dot_contrast = torch.div(
                 torch.matmul(anchor_feature, contrast_feature.T),
                 self.temperature,
             )
             # for numerical stability
-            logits_max, _ = torch.max(anchor_dot_contrast, dim=1, keepdim=True)
-            logits = anchor_dot_contrast - logits_max.detach()
+            logits_min, _ = torch.min(anchor_dot_contrast, dim=1, keepdim=True)
+            logits_std = torch.std(anchor_dot_contrast, dim=1, keepdim=True)
+            logits = (anchor_dot_contrast - logits_min.detach()) / logits_std
 
-            # tile mask
-            mask = mask.repeat(anchor_count, contrast_count)
             # mask-out self-contrast cases
             logits_mask = torch.scatter(
                 torch.ones_like(mask),
                 1,
-                torch.arange(batch_size * anchor_count).view(-1, 1).to(device),
+                torch.arange(anchor_count).view(-1, 1).to(device),
                 0,
             )
             mask = mask * logits_mask
-
             # compute log_prob
             exp_logits = torch.exp(logits) * logits_mask
             log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
@@ -63,7 +60,7 @@ class HomoContrastive(nn.Module):
             loss = (
                 -(self.temperature / self.base_temperature) * mean_log_prob_pos
             )
-            loss = loss.view(anchor_count, batch_size).mean()
+            loss = loss.view(anchor_count).mean()
             total_loss += loss
 
         return total_loss
@@ -131,7 +128,7 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     out: (M, D)
     """
     assert embed_dim % 2 == 0
-    omega = np.arange(embed_dim // 2, dtype=np.float)
+    omega = np.arange(embed_dim // 2, dtype=np.float32)
     omega /= embed_dim / 2.0
     omega = 1.0 / 10000**omega  # (D/2,)
 
