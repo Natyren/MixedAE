@@ -8,7 +8,7 @@ from .modeling import PatchEmbed, Block
 from .utils import mixing, HomoContrastive, get_2d_sincos_pos_embed
 
 
-class MixedMaskedAutoencoderViT(nn.Module):
+class MixedAutoencoderViT(nn.Module):
     def __init__(
         self,
         img_size=224,
