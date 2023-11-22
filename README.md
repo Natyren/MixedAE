@@ -7,5 +7,10 @@ model = MixedAutoencoderViT()
 ```
 
 ## Current status
-<img width="939" alt="image" src="https://github.com/Natyren/MixedAE/assets/51296182/bacb5cbc-03dc-4160-949d-13731e23cc17">
+
+- [x] model code
+- [ ] pretrain
+- [ ] transfer to ViT
+- [ ] finetune
+- [ ] weights (not sure)
 
