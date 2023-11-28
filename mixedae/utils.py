@@ -76,6 +76,7 @@ def mixing(
         ],
         axis=1,
     ).reshape(a.shape)
+    idx = idx.to(a.device)
     mixed = torch.gather(a, dim=0, index=idx)
     return mixed, idx
 

@@ -27,7 +27,8 @@ class MixedAutoencoderViT(nn.Module):
     ):
         super().__init__()
 
-        self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim)
+        self.patch_embed = PatchEmbed(
+            img_size, patch_size, in_chans, embed_dim)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
@@ -155,7 +156,7 @@ class MixedAutoencoderViT(nn.Module):
         x = x + self.pos_embed[:, 1:, :]
         x = x + self.segment_embed(
             torch.tensor(
-                [i % 4 for i in range(x.shape[0])]
+                [i % 4 for i in range(x.shape[0])], device=x.device
             )  # TODO change 4 to custom mixing param
         ).unsqueeze(1)
 
